@@ -22,7 +22,7 @@ fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val snackHost = remember { SnackbarHostState() }
 
-    val sellers = listOf("Renan" to 59, "Gabriel" to 61, "Rose" to 148, "Matheus" to 794, "Cruz" to 530)
+    val sellers = listOf("Renan" to 59, "Gabriel" to 61, "Rose" to 148, "Matheus" to 794, "Cruz" to 530, "Adriano Almeida" to 9045)
     var expandedSeller by remember { mutableStateOf(false) }
     var selectedSellerName by remember { mutableStateOf("") }
     var cliente by remember { mutableStateOf("") }

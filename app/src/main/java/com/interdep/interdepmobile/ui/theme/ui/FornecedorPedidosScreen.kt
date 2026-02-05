@@ -70,7 +70,7 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHost) },
         bottomBar = {
             Surface(shadowElevation = 16.dp) {
-                Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PremiumButton("Atualizar", Modifier.weight(1f), Navy700, Icons.Default.Refresh) {
                         carregando = true
                         scope.launch(Dispatchers.IO) {

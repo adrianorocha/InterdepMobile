@@ -63,10 +63,13 @@ fun MainMenuScreen(
             MenuCard("Compras", "Liberar Pedidos", Icons.Default.ShoppingCart, Blue600, onLiberarPedidoCompras)
             MenuCard("Serviços", "Liberar Serviços", Icons.Default.Receipt, Color(0xFF8B5CF6), onLiberarPedidoServico)
             MenuCard("Vendas", "Carteira de Clientes", Icons.Default.Business, Color(0xFFEC4899), onCarteiraCliente)
-            MenuCard("Financeiro", "Comissão Repres.", Icons.Default.AttachMoney, Emerald500, onComissaoRepresentante)
+            MenuCard("Financeiro", "Comissão Representantes", Icons.Default.AttachMoney, Emerald500, onComissaoRepresentante)
             MenuCard("Cadastro", "Liberar Fornecedor", Icons.Default.LocationCity, Color(0xFFF59E0B), onLiberaFornecedor)
 
-            Spacer(modifier = Modifier.weight(1f)) // Empurra o botão Sair para baixo
+            Spacer(modifier = Modifier
+                .weight(1f)
+                .navigationBarsPadding()
+            ) // Empurra o botão Sair para baixo
 
             // 4. Botão Explicito de Sair
             MenuCard("Sistema", "Sair do Aplicativo", Icons.Default.ExitToApp, Rose500) {
