@@ -30,8 +30,18 @@ import java.math.BigDecimal
 import java.sql.DriverManager
 
 // --- Modelos Específicos para Serviço ---
-data class PedidoS(val numero: String, val data: String, val valor: BigDecimal)
-data class FornecedorGrupoS(val nomeFantasia: String, val razaoSocial: String, val codigo: String, val pedidos: MutableList<PedidoS>)
+data class PedidoS(
+    val numero: String,
+    val data: String,
+    val valor: BigDecimal,
+    val temMovimentoFinanceiro: Boolean
+)
+data class FornecedorGrupoS(
+    val nomeFantasia: String,
+    val razaoSocial: String,
+    val codigo: String,
+    val pedidos: MutableList<PedidoS>
+)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +78,10 @@ fun PedidosServicoScreen(onFinish: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHost) },
         bottomBar = {
             Surface(shadowElevation = 16.dp) {
-                Row(Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PremiumButton("Atualizar", Modifier.weight(1f), Navy700, Icons.Default.Refresh) {
                         carregando = true
                         scope.launch(Dispatchers.IO) {
@@ -88,11 +101,15 @@ fun PedidosServicoScreen(onFinish: () -> Unit) {
         },
         containerColor = Slate100
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        Box(Modifier
+            .fillMaxSize()
+            .padding(padding)) {
             if (carregando) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center), color = Navy700)
             } else {
-                LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyColumn(Modifier
+                    .fillMaxSize()
+                    .padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(fornecedores, key = { it.codigo }) { grupo ->
                         FornecedorCardS(grupo, expandedState[grupo.codigo] ?: false, selectedPedidos) {
                             expandedState[grupo.codigo] = !(expandedState[grupo.codigo] ?: false)
@@ -130,17 +147,42 @@ fun FornecedorCardS(grupo: FornecedorGrupoS, isExpanded: Boolean, selectedPedido
                     Divider(color = Slate100)
                     grupo.pedidos.forEach { pedido ->
                         val isChecked = selectedPedidos.contains(pedido.numero)
+
                         Row(
-                            Modifier.fillMaxWidth().clickable { if(isChecked) selectedPedidos.remove(pedido.numero) else selectedPedidos.add(pedido.numero) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                // Bloqueia o clique na linha inteira se não tiver movimento financeiro
+                                .clickable(enabled = pedido.temMovimentoFinanceiro) {
+                                    if(isChecked) selectedPedidos.remove(pedido.numero) else selectedPedidos.add(pedido.numero)
+                                }
+                                .background(if (!pedido.temMovimentoFinanceiro) Rose500.copy(alpha = 0.05f) else Color.Transparent) // Fundo levemente vermelho se tiver erro
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Checkbox(checked = isChecked, onCheckedChange = { if(it) selectedPedidos.add(pedido.numero) else selectedPedidos.remove(pedido.numero) }, colors = CheckboxDefaults.colors(checkedColor = Emerald500))
+                            // Checkbox desabilitado se não tiver financeiro
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = { if(it) selectedPedidos.add(pedido.numero) else selectedPedidos.remove(pedido.numero) },
+                                colors = CheckboxDefaults.colors(checkedColor = Emerald500),
+                                enabled = pedido.temMovimentoFinanceiro
+                            )
                             Spacer(Modifier.width(8.dp))
+
                             Column(Modifier.weight(1f)) {
-                                Text("Serviço #${pedido.numero}", fontWeight = FontWeight.SemiBold, color = Navy900)
+                                // --- REGRA DE EXIBIÇÃO APLICADA AQUI ---
+                                if (pedido.temMovimentoFinanceiro) {
+                                    Text("Serviço #${pedido.numero}", fontWeight = FontWeight.SemiBold, color = Navy900)
+                                } else {
+                                    Text("Serviço #${pedido.numero} - Movimento(s) Financeiro(s) não gerado", fontWeight = FontWeight.Bold, color = Rose500, fontSize = 13.sp)
+                                }
+
                                 Text(pedido.data.toDataPremium(), fontSize = 12.sp, color = Slate500)
                             }
-                            Text(pedido.valor.toPrecoFormatado(), fontWeight = FontWeight.Bold, color = Emerald500)
+
+                            // Esconde o valor se não tiver movimento financeiro
+                            if (pedido.temMovimentoFinanceiro) {
+                                Text(pedido.valor.toPrecoFormatado(), fontWeight = FontWeight.Bold, color = Emerald500)
+                            }
                         }
                     }
                 }
@@ -148,23 +190,33 @@ fun FornecedorCardS(grupo: FornecedorGrupoS, isExpanded: Boolean, selectedPedido
         }
     }
 }
-
-// ─── Lógica JDBC Serviço (Copiar lógica original, renomeei para evitar conflito) ───
+// ─── Lógica JDBC Serviço ───
 private fun fetchHierarquiaServico(dbName: String, onResult: (List<FornecedorGrupoS>) -> Unit) = Thread {
     val mapa = linkedMapOf<String, FornecedorGrupoS>()
     try {
         Class.forName("net.sourceforge.jtds.jdbc.Driver")
         DriverManager.getConnection(getUrl(dbName)).use { conn ->
             conn.createStatement().use { st ->
-                // Sua query original aqui...
+
+                // --- SQL ATUALIZADO COM VALIDAÇÃO DE MOVIMENTO FINANCEIRO ---
                 st.executeQuery("""
-                Select Distinct f.NOM_FANTASIA, f.COD_FORNECEDOR, f.RAZ_SOCIAL, p.NUM_PEDI_SERVICO,
+                Select Distinct 
+                   f.NOM_FANTASIA, 
+                   f.COD_FORNECEDOR, 
+                   f.RAZ_SOCIAL, 
+                   p.NUM_PEDI_SERVICO,
                    CONVERT(varchar(10), p.DAT_EMISSAO, 103) as DATA_EMISSAO,
-                   (p.VAL_TOTAL+p.VAL_INSS+p.VAL_IRRF+p.VAL_PCC+p.VAL_ISS) as VAL_TOTAL
+                   (IsNull(p.VAL_TOTAL,0)+IsNull(p.VAL_INSS,0)+IsNull(p.VAL_IRRF,0)+IsNull(p.VAL_PCC,0)+IsNull(p.VAL_ISS,0)) as VAL_TOTAL,
+                   -- Verifica se existe registro na tabela movimento_financeiro
+                   (CASE WHEN EXISTS (
+                        SELECT 1 FROM movimento_financeiro mf 
+                        WHERE mf.num_pedi_servico = p.NUM_PEDI_SERVICO
+                   ) THEN 1 ELSE 0 END) AS TEM_MOV_FINANCEIRO
                 From PEDIDO_SERVICO p 
                 Join ITEM_PEDI_SERVICO i on(p.NUM_PEDI_SERVICO = i.NUM_PEDI_SERVICO)
                 Join FORNECEDOR f on (p.COD_FORNECEDOR = f.COD_FORNECEDOR)
-                Where (p.COD_SITUACAO = 'N') Order by f.NOM_FANTASIA
+                Where (p.COD_SITUACAO = 'N') 
+                Order by f.NOM_FANTASIA
                 """.trimIndent()).use { rs ->
                     while (rs.next()) {
                         val cod = rs.getString("COD_FORNECEDOR").trim()
@@ -172,8 +224,19 @@ private fun fetchHierarquiaServico(dbName: String, onResult: (List<FornecedorGru
                             FornecedorGrupoS(rs.getString("NOM_FANTASIA").trim(), rs.getString("RAZ_SOCIAL").trim(), cod, mutableListOf())
                         }
                         val num = rs.getString("NUM_PEDI_SERVICO").trim()
+
+                        // Extrai a validação do banco (1 = True, 0 = False)
+                        val temMovimento = rs.getInt("TEM_MOV_FINANCEIRO") == 1
+
                         if (grupo.pedidos.none { it.numero == num }) {
-                            grupo.pedidos.add(PedidoS(num, rs.getString("DATA_EMISSAO"), rs.getBigDecimal("VAL_TOTAL")))
+                            grupo.pedidos.add(
+                                PedidoS(
+                                    numero = num,
+                                    data = rs.getString("DATA_EMISSAO"),
+                                    valor = rs.getBigDecimal("VAL_TOTAL"),
+                                    temMovimentoFinanceiro = temMovimento // Salva no objeto
+                                )
+                            )
                         }
                     }
                 }
@@ -182,7 +245,6 @@ private fun fetchHierarquiaServico(dbName: String, onResult: (List<FornecedorGru
     } catch (e: Exception) { e.printStackTrace() }
     onResult(mapa.values.toList())
 }.start()
-
 private fun liberarSelecionadosServico(dbName: String, numeros: List<String>): Int {
     if (numeros.isEmpty()) return 0
     var total = 0
