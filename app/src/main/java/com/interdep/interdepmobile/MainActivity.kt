@@ -1,10 +1,12 @@
 package com.interdep.interdepmobile
 
+import android.os.Build
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.LaunchedEffect
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.annotation.RequiresApi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.navigation.compose.rememberNavController
 import com.interdep.interdepmobile.ui.FornecedorPedidosScreen
@@ -12,15 +14,18 @@ import com.interdep.interdepmobile.navigation.Routes
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.interdep.interdepmobile.ui.AtualizarBeneficiamentoScreen
 import com.interdep.interdepmobile.ui.ComissaoRepresentanteScreen
 import com.interdep.interdepmobile.ui.MainMenuScreen
 import com.interdep.interdepmobile.ui.PedidosServicoScreen
 import com.interdep.interdepmobile.ui.VendedorClienteScreen
 import com.interdep.interdepmobile.ui.LiberacaoFornecedorScreen
 import com.interdep.interdepmobile.ui.SplashScreen
+import com.interdep.interdepmobile.ui.TransferenciaFuncionarioScreen
 
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -29,6 +34,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InterdepApp() {
@@ -61,12 +67,18 @@ fun InterdepApp() {
                 onCarteiraCliente      = {
                     navController.navigate(Routes.VENDEDOR_CLIENTE)
                 },
-                        onComissaoRepresentante      = {
+                onComissaoRepresentante      = {
                     navController.navigate(Routes.COMISSAO_REPRESENTANTE)
                 },
                onLiberaFornecedor = {
                    navController.navigate(Routes.LIBERA_FORNECEDOR)
-               }
+               },
+                onTransferirFuncionario = {
+                    navController.navigate(Routes.TRANSFERIR_FUNCIONARIO)
+                },
+                onAtualizarBeneficiamento = {
+                    navController.navigate(Routes.ATUALIZAR_BENEFICIAMENTO)
+                }
             )
         }
         composable(Routes.PEDIDOS_COMPRAS) {
@@ -106,6 +118,23 @@ fun InterdepApp() {
 
         composable(Routes.LIBERA_FORNECEDOR) {
             LiberacaoFornecedorScreen(
+                onFinish = {
+                    // Ao voltar, volta para o menu
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(Routes.TRANSFERIR_FUNCIONARIO) {
+            TransferenciaFuncionarioScreen(
+                onFinish = {
+                    // Ao voltar, volta para o menu
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Routes.ATUALIZAR_BENEFICIAMENTO) {
+            AtualizarBeneficiamentoScreen(
                 onFinish = {
                     // Ao voltar, volta para o menu
                     navController.popBackStack()

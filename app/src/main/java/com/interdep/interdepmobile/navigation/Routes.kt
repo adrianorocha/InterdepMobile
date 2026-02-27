@@ -11,4 +11,6 @@ object Routes {
     const val COMISSAO_REPRESENTANTE = "comissao_representante"
     const val SPLASH = "splash"
     const val LIBERA_FORNECEDOR = "libera_fornecedor"
+    const val TRANSFERIR_FUNCIONARIO = "transferir_funcionario"
+    const val ATUALIZAR_BENEFICIAMENTO = "atualizar_beneficiamento"
 }

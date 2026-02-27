@@ -4,11 +4,35 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.LocationCity
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,9 +42,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.interdep.interdepmobile.ui.components.PremiumTopBar
-import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.Blue600
+import com.interdep.interdepmobile.ui.theme.Emerald500
+import com.interdep.interdepmobile.ui.theme.Navy900
+import com.interdep.interdepmobile.ui.theme.Rose500
+import com.interdep.interdepmobile.ui.theme.Slate100
+import com.interdep.interdepmobile.ui.theme.Slate500
 import kotlin.system.exitProcess
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,7 +58,9 @@ fun MainMenuScreen(
     onLiberarPedidoServico: () -> Unit,
     onCarteiraCliente: () -> Unit,
     onComissaoRepresentante: () -> Unit,
-    onLiberaFornecedor: () -> Unit
+    onLiberaFornecedor: () -> Unit,
+    onTransferirFuncionario: () -> Unit,
+    onAtualizarBeneficiamento: () -> Unit
 ) {
     // 1. Obtém o contexto da Activity atual
     val context = LocalContext.current
@@ -65,6 +95,8 @@ fun MainMenuScreen(
             MenuCard("Vendas", "Carteira de Clientes", Icons.Default.Business, Color(0xFFEC4899), onCarteiraCliente)
             MenuCard("Financeiro", "Comissão Representantes", Icons.Default.AttachMoney, Emerald500, onComissaoRepresentante)
             MenuCard("Cadastro", "Liberar Fornecedor", Icons.Default.LocationCity, Color(0xFFF59E0B), onLiberaFornecedor)
+            MenuCard("RH", "Transferir Funcionário", Icons.Default.CompareArrows, Color(0xFF10B981), onTransferirFuncionario)
+            MenuCard("Beneficiamento", "Atualizar Beneficiamento", Icons.Default.AccountBalance, Color(0xFF64748B), onAtualizarBeneficiamento)
 
             Spacer(modifier = Modifier
                 .weight(1f)

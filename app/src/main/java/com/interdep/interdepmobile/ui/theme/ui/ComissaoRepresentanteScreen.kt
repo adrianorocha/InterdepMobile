@@ -1,5 +1,7 @@
 package com.interdep.interdepmobile.ui
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +33,7 @@ data class RepresentanteComissao(
     val indFuncionario: Boolean, val valComissao: BigDecimal
 )
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ComissaoRepresentanteScreen(dbName: String = "Brasfit", onDone: () -> Unit) {
@@ -39,7 +42,7 @@ fun ComissaoRepresentanteScreen(dbName: String = "Brasfit", onDone: () -> Unit) 
 
     // Filtros e Estado
     val meses = listOf("01 — Janeiro","02 — Fevereiro","03 — Março","04 — Abril","05 — Maio","06 — Junho","07 — Julho","08 — Agosto","09 — Setembro","10 — Outubro","11 — Novembro","12 — Dezembro")
-    val anos = (2021..2025).map { it.toString() }
+    val anos = (2021..2029).map { it.toString() }
     var selectedMes by remember { mutableStateOf(meses.first()) }
     var selectedAno by remember { mutableStateOf(anos.last()) }
     var expandedMes by remember { mutableStateOf(false) }
@@ -97,6 +100,7 @@ fun ComissaoRepresentanteScreen(dbName: String = "Brasfit", onDone: () -> Unit) 
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ComissaoCard(item: RepresentanteComissao, mes: String, ano: String, scope: kotlinx.coroutines.CoroutineScope, snack: SnackbarHostState) {
     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {

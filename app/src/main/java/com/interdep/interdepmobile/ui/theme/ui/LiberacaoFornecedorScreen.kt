@@ -1,12 +1,14 @@
 package com.interdep.interdepmobile.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -15,9 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.interdep.interdepmobile.ui.components.*
 import com.interdep.interdepmobile.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -30,30 +34,48 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var selectedDb by remember { mutableStateOf("Brasfit") }
     var codInput by remember { mutableStateOf("") }
+
+    // Estados do Fornecedor
     var fantasia by remember { mutableStateOf("") }
     var razao by remember { mutableStateOf("") }
+    var situacao by remember { mutableStateOf("") } // 'A' para Ativo, 'I' para Inativo, etc.
+
     var loading by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
     fun buscar() {
         if(codInput.isEmpty()) return
-        loading = true; errorMsg = null; fantasia = ""; razao = ""
+        loading = true; errorMsg = null; fantasia = ""; razao = ""; situacao = ""
         scope.launch(Dispatchers.IO) {
-            val res = fetchFornecedorByCode(codInput)
+            val res = fetchFornecedorByCode(selectedDb, codInput)
             loading = false
-            if (res != null) { fantasia = res.first; razao = res.second }
-            else { errorMsg = "Não encontrado" }
+            if (res != null) {
+                fantasia = res.first
+                razao = res.second
+                situacao = res.third
+            } else {
+                errorMsg = "Fornecedor não encontrado no banco $selectedDb"
+            }
         }
     }
 
     Scaffold(
-        topBar = { PremiumTopBar("Liberação Fornecedor", "Desbloquear Cadastro", Icons.Default.LocationCity, onBack = onFinish) },
+        topBar = {
+            Column(Modifier.background(Color.White)) {
+                PremiumTopBar("Liberação Fornecedor", "Desbloquear Cadastro", Icons.Default.LocationCity, onBack = onFinish)
+                ResponsiveDbSelector(selectedDb = selectedDb, onDbSelected = {
+                    selectedDb = it
+                    fantasia = ""
+                })
+            }
+        },
         containerColor = Slate100
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-            // Área de Busca
+            // Busca
             Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                 Column(Modifier.padding(16.dp)) {
                     OutlinedTextField(
@@ -71,24 +93,45 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
 
             if (loading) CircularProgressIndicator(Modifier.align(Alignment.CenterHorizontally), color = Navy700)
 
-            errorMsg?.let {
-                Text(it, color = Rose500, modifier = Modifier.align(Alignment.CenterHorizontally))
-            }
+            errorMsg?.let { Text(it, color = Rose500, modifier = Modifier.align(Alignment.CenterHorizontally)) }
 
-            // Resultado
+            // Resultado Dinâmico
             if (fantasia.isNotEmpty()) {
                 Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.padding(16.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Fornecedor Encontrado", style = MaterialTheme.typography.labelMedium, color = Slate500)
+                        Text("Fornecedor Encontrado ($selectedDb)", style = MaterialTheme.typography.labelMedium, color = Slate500)
                         Text(fantasia, style = MaterialTheme.typography.titleLarge, color = Navy900)
                         Text(razao, style = MaterialTheme.typography.bodyMedium, color = Slate500)
+
                         Divider(Modifier.padding(vertical = 12.dp))
-                        PremiumButton("Liberar Cadastro", Modifier.fillMaxWidth(), Emerald500, Icons.Default.CheckCircle) {
-                            scope.launch(Dispatchers.IO) {
-                                val qtd = liberateFornecedor(codInput)
-                                launch(Dispatchers.Main) {
-                                    Toast.makeText(ctx, if(qtd >= 0) "Liberado com sucesso!" else "Erro", Toast.LENGTH_SHORT).show()
-                                    if(qtd >= 0) { codInput = ""; fantasia = "" }
+
+                        // --- VALIDAÇÃO DE STATUS ---
+                        if (situacao == "A") {
+                            // Caso já esteja liberado, mostra um aviso amigável
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Emerald500.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.CheckCircle, null, tint = Emerald500)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Este fornecedor já está liberado.", color = Emerald500, fontWeight = FontWeight.Bold)
+                            }
+                        } else {
+                            // Caso esteja bloqueado, mostra o botão de ação
+                            PremiumButton("Liberar Cadastro", Modifier.fillMaxWidth(), Emerald500, Icons.Default.CheckCircle) {
+                                scope.launch(Dispatchers.IO) {
+                                    val qtd = liberateFornecedor(selectedDb, codInput)
+                                    launch(Dispatchers.Main) {
+                                        if(qtd >= 0) {
+                                            Toast.makeText(ctx, "Liberado com sucesso!", Toast.LENGTH_SHORT).show()
+                                            buscar() // Recarrega para mostrar o status de sucesso
+                                        } else {
+                                            Toast.makeText(ctx, "Erro ao liberar", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -99,23 +142,42 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
     }
 }
 
-// Manter fetchFornecedorByCode e liberateFornecedor aqui
-private fun fetchFornecedorByCode(cod: String): Pair<String, String>? {
-    // Sua lógica JDBC select...
-    var res: Pair<String, String>? = null
+// --- JDBC ATUALIZADO ---
+
+private fun fetchFornecedorByCode(dbName: String, cod: String): Triple<String, String, String>? {
+    var res: Triple<String, String, String>? = null
     try {
         Class.forName("net.sourceforge.jtds.jdbc.Driver")
-        DriverManager.getConnection(getUrl("Brasfit")).use { conn ->
+        DriverManager.getConnection(getUrl(dbName)).use { conn ->
             conn.createStatement().use { st ->
-                val rs = st.executeQuery("SELECT NOM_FANTASIA, RAZ_SOCIAL FROM FORNECEDOR WHERE COD_FORNECEDOR = '$cod'")
-                if(rs.next()) res = rs.getString(1).trim() to rs.getString(2).trim()
+                // Agora buscamos também o campo COD_SITUACAO
+                val rs = st.executeQuery("SELECT NOM_FANTASIA, RAZ_SOCIAL, COD_SITUACAO FROM FORNECEDOR WHERE COD_FORNECEDOR = '$cod'")
+                if(rs.next()) {
+                    res = Triple(
+                        rs.getString(1).trim(),
+                        rs.getString(2).trim(),
+                        rs.getString(3).trim() // COD_SITUACAO
+                    )
+                }
             }
         }
     } catch (e: Exception) { e.printStackTrace() }
     return res
 }
 
-private fun liberateFornecedor(cod: String): Int {
-    // Sua lógica JDBC update...
-    return 1 // Mock
+private fun liberateFornecedor(dbName: String, cod: String): Int {
+    var total = 0
+    try {
+        Class.forName("net.sourceforge.jtds.jdbc.Driver")
+        DriverManager.getConnection(getUrl(dbName)).use { conn -> // Usa o dbName aqui
+            conn.createStatement().use { st ->
+                // Exemplo de update para liberar fornecedor (ajuste o campo conforme seu banco)
+                total = st.executeUpdate("UPDATE FORNECEDOR SET COD_SITUACAO = 'A' WHERE COD_FORNECEDOR = '$cod'")
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        total = -1
+    }
+    return total
 }
