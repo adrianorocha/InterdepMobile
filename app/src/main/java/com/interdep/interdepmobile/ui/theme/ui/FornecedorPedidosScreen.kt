@@ -3,6 +3,9 @@ package com.interdep.interdepmobile.ui
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,7 +20,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.interdep.interdepmobile.ui.components.*
@@ -26,7 +31,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.sql.DriverManager
-import com.interdep.interdepmobile.ui.components.getUrl
 import com.interdep.interdepmobile.util.toDataPremium
 import com.interdep.interdepmobile.util.toPrecoFormatado
 
@@ -46,6 +50,7 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
     var fornecedores by remember { mutableStateOf(listOf<FornecedorGrupo>()) }
     val expandedState = remember { mutableStateMapOf<String, Boolean>() }
     val selectedPedidos = remember { mutableStateListOf<String>() }
+    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(selectedDb) {
         carregando = true
@@ -60,10 +65,9 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
         topBar = {
             Column(Modifier.background(Color.White)) {
                 PremiumTopBar("Pedidos de Compras", selectedDb, Icons.Default.ShoppingCart, onBack = onFinish)
-                // Seletor de Banco simplificado
                 ResponsiveDbSelector(
                     selectedDb = selectedDb,
-                    onDbSelected = { newDb -> selectedDb = newDb }
+                    onDbSelected = { newDb -> selectedDb = newDb; selectedPedidos.clear() }
                 )
             }
         },
@@ -73,6 +77,7 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
                 Row(Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PremiumButton("Atualizar", Modifier.weight(1f), Navy700, Icons.Default.Refresh) {
                         carregando = true
+                        selectedPedidos.clear()
                         scope.launch(Dispatchers.IO) {
                             fetchHierarquia(selectedDb) { lista ->
                                 fornecedores = lista
@@ -81,9 +86,24 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
                         }
                     }
                     PremiumButton("Liberar (${selectedPedidos.size})", Modifier.weight(1f), Emerald500, Icons.Default.Check) {
+                        if (selectedPedidos.isEmpty()) {
+                            scope.launch { snackbarHost.showSnackbar("Nenhum pedido selecionado.") }
+                            return@PremiumButton
+                        }
                         scope.launch(Dispatchers.IO) {
                             val qtd = liberarSelecionados(selectedDb, selectedPedidos.toList())
-                            snackbarHost.showSnackbar(if (qtd > 0) "$qtd Liberados" else "Erro ou vazio")
+
+                            // Dispara a vibração na Thread Principal (UI)
+                            launch(Dispatchers.Main) {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            }
+
+                            // Mostra o Snackbar de forma independente
+                            launch {
+                                snackbarHost.showSnackbar(if (qtd > 0) "$qtd Pedidos Liberados" else "Erro ao liberar")
+                            }
+
+                            // Atualiza a lista imediatamente
                             fetchHierarquia(selectedDb) { lista -> fornecedores = lista; carregando = false }
                             selectedPedidos.clear()
                         }
@@ -96,6 +116,18 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (carregando) {
                 CircularProgressIndicator(Modifier.align(Alignment.Center), color = Navy700)
+            } else if (fornecedores.isEmpty()) {
+                // --- NOVO: ESTADO VAZIO ---
+                Column(
+                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.TaskAlt, contentDescription = null, modifier = Modifier.size(72.dp), tint = Emerald500.copy(alpha = 0.5f))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Tudo Limpo!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Navy900)
+                    Text("Não há pedidos pendentes de liberação neste banco no momento.", fontSize = 14.sp, color = Slate500, textAlign = TextAlign.Center)
+                }
             } else {
                 LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(fornecedores, key = { it.codigo }) { grupo ->
@@ -112,6 +144,10 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun FornecedorCard(grupo: FornecedorGrupo, isExpanded: Boolean, selectedPedidos: SnapshotStateList<String>, onToggle: () -> Unit) {
+    // --- NOVO: CÁLCULO DE RESUMO ---
+    val qtdPedidos = grupo.pedidos.size
+    val valorTotal = grupo.pedidos.map { it.valor }.fold(BigDecimal.ZERO, BigDecimal::add)
+
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -120,22 +156,46 @@ fun FornecedorCard(grupo: FornecedorGrupo, isExpanded: Boolean, selectedPedidos:
     ) {
         Column {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(40.dp).background(Slate100, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                    Text(grupo.codigo, fontWeight = FontWeight.Bold, color = Slate500, fontSize = 12.sp)
+                // --- NOVO: ÍCONE SOFISTICADO ---
+                Box(
+                    modifier = Modifier.size(48.dp).background(Color(0xFFDBEAFE), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Storefront, contentDescription = null, tint = Color(0xFF2563EB))
                 }
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(16.dp))
+
                 Column(Modifier.weight(1f)) {
                     Text(grupo.nomeFantasia, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Navy900)
-                    Text(grupo.razaoSocial, fontSize = 12.sp, color = Slate500)
+                    Text(grupo.razaoSocial, fontSize = 12.sp, color = Slate500, maxLines = 1)
+
+                    // --- NOVO: BADGE DE RESUMO FINANCEIRO ---
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "$qtdPedidos pedido(s)  •  ${valorTotal.toPrecoFormatado()}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Emerald500
+                    )
                 }
                 Icon(if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, null, tint = Slate500)
             }
-            AnimatedVisibility(visible = isExpanded) {
-                Column {
-                    Divider(color = Slate100)
-                    grupo.pedidos.forEach { pedido ->
-                        PedidoRow(pedido, selectedPedidos.contains(pedido.numero)) {
-                            if (it) selectedPedidos.add(pedido.numero) else selectedPedidos.remove(pedido.numero)
+
+            // --- ANIMAÇÃO SUAVE DE ABERTURA ---
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(animationSpec = tween(300)),
+                exit = shrinkVertically(animationSpec = tween(300))
+            ) {
+                Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                    Divider(color = Slate100, modifier = Modifier.padding(bottom = 12.dp))
+
+                    // Lista de pedidos com espaçamento
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        grupo.pedidos.forEach { pedido ->
+                            PedidoRow(pedido, selectedPedidos.contains(pedido.numero)) {
+                                if (it) selectedPedidos.add(pedido.numero) else selectedPedidos.remove(pedido.numero)
+                            }
                         }
                     }
                 }
@@ -147,28 +207,39 @@ fun FornecedorCard(grupo: FornecedorGrupo, isExpanded: Boolean, selectedPedidos:
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun PedidoRow(pedido: Pedido, isChecked: Boolean, onChecked: (Boolean) -> Unit) {
+    // --- NOVO: DESIGN DE CARD INTERNO ---
     Row(
-        Modifier.fillMaxWidth().clickable { onChecked(!isChecked) }.padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(if (isChecked) Emerald500.copy(alpha = 0.05f) else Slate100.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+            .clickable { onChecked(!isChecked) }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(checked = isChecked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Emerald500))
+        Checkbox(
+            checked = isChecked,
+            onCheckedChange = onChecked,
+            colors = CheckboxDefaults.colors(checkedColor = Emerald500)
+        )
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text("Pedido #${pedido.numero}", fontWeight = FontWeight.SemiBold, color = Navy900)
-            Text(
-                text = pedido.data.toDataPremium(), // Agora formata para: 04 Fev 2025
-                fontSize = 12.sp,
-                color = Slate500
-            )
+            Text("Pedido #${pedido.numero}", fontWeight = FontWeight.Bold, color = Navy900, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(12.dp), tint = Slate500)
+                Spacer(Modifier.width(4.dp))
+                Text(text = pedido.data.toDataPremium(), fontSize = 12.sp, color = Slate500)
+            }
         }
         Text(
-            text = pedido.valor.toPrecoFormatado(), // Agora usa o formatador R$ 12.000,00
+            text = pedido.valor.toPrecoFormatado(),
             fontWeight = FontWeight.Bold,
-            color = Emerald500
+            color = if (isChecked) Emerald500 else Navy700,
+            fontSize = 15.sp
         )
     }
 }
 
+// ... Manter funções fetchHierarquia e liberarSelecionados inalteradas abaixo ...
 // Função que busca a hierarquia de Fornecedores e Pedidos de Compra
 private fun fetchHierarquia(
     dbName: String,

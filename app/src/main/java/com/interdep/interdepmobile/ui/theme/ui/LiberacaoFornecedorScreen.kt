@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -44,6 +45,8 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
 
     var loading by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+
+    val haptic = LocalHapticFeedback.current
 
     fun buscar() {
         if(codInput.isEmpty()) return
@@ -125,6 +128,9 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
                                 scope.launch(Dispatchers.IO) {
                                     val qtd = liberateFornecedor(selectedDb, codInput)
                                     launch(Dispatchers.Main) {
+                                        // Dispara a vibração
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+
                                         if(qtd >= 0) {
                                             Toast.makeText(ctx, "Liberado com sucesso!", Toast.LENGTH_SHORT).show()
                                             buscar() // Recarrega para mostrar o status de sucesso

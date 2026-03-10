@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,8 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
     var bancoOrigem by remember { mutableStateOf(dbList[0]) }
     val bancosDestino = remember { mutableStateListOf<String>() }
     var carregando by remember { mutableStateOf(false) }
+
+    val haptic = LocalHapticFeedback.current
 
     // Se o banco de origem mudar e estiver nos destinos, remove ele dos destinos
     LaunchedEffect(bancoOrigem) {
@@ -188,7 +191,10 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                     )
 
                     launch(Dispatchers.Main) {
+                        // Dispara a vibração
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                         carregando = false
+
                         if (sucesso) {
                             Toast.makeText(context, "Transferência realizada com sucesso!", Toast.LENGTH_LONG).show()
                             matricula = ""

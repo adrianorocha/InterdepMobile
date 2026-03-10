@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.interdep.interdepmobile.ui.components.*
 import com.interdep.interdepmobile.ui.theme.*
@@ -26,6 +27,7 @@ fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
     var expandedSeller by remember { mutableStateOf(false) }
     var selectedSellerName by remember { mutableStateOf("") }
     var cliente by remember { mutableStateOf("") }
+    val haptic = LocalHapticFeedback.current
 
     val codV = sellers.find { it.first == selectedSellerName }?.second
 
@@ -80,8 +82,22 @@ fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
                 } else {
                     scope.launch(Dispatchers.IO) {
                         val qtd = upsertVendedorCliente(dbName, codV, cliente)
-                        snackHost.showSnackbar(if (qtd >= 0) "Sucesso! Registros afetados: $qtd" else "Erro ao gravar.")
-                        if (qtd >= 0) { selectedSellerName = ""; cliente = "" }
+
+                        // Dispara a vibração na Thread Principal (UI)
+                        launch(Dispatchers.Main) {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        }
+
+                        // Mostra o aviso flutuante
+                        launch {
+                            snackHost.showSnackbar(if (qtd >= 0) "Sucesso! Registros afetados: $qtd" else "Erro ao gravar.")
+                        }
+
+                        // Limpa a tela instantaneamente
+                        if (qtd >= 0) {
+                            selectedSellerName = ""
+                            cliente = ""
+                        }
                     }
                 }
             }

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,8 @@ fun AtualizarBeneficiamentoScreen(onFinish: () -> Unit) {
     // Seleção de Banco (Único)
     val bancosDestino = listOf("Braketube", "Diametal")
     var bancoSelecionado by remember { mutableStateOf(bancosDestino[0]) }
+
+    val haptic = LocalHapticFeedback.current
 
     Scaffold(
         topBar = {
@@ -210,7 +213,10 @@ fun AtualizarBeneficiamentoScreen(onFinish: () -> Unit) {
                     val sucesso = executarUpdateBeneficiamento(valorFormatado, tipoSelecionado, bancoSelecionado)
 
                     launch(Dispatchers.Main) {
+                        // Dispara a vibração
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                         carregando = false
+
                         if (sucesso) {
                             Toast.makeText(context, "Valores atualizados com sucesso!", Toast.LENGTH_LONG).show()
                             valorInput = "" // Limpa o campo após sucesso
