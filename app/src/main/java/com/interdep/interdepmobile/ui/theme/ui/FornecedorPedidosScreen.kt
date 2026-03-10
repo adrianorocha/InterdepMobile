@@ -5,7 +5,11 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,13 +24,18 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.interdep.interdepmobile.ui.components.*
 import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.ui.PremiumButton
+import com.interdep.interdepmobile.ui.theme.ui.PremiumSnackbar
+import com.interdep.interdepmobile.ui.theme.ui.PremiumTopBar
+import com.interdep.interdepmobile.ui.theme.ui.ResponsiveDbSelector
+import com.interdep.interdepmobile.ui.theme.ui.getUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -64,18 +73,38 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
     Scaffold(
         topBar = {
             Column(Modifier.background(Color.White)) {
-                PremiumTopBar("Pedidos de Compras", selectedDb, Icons.Default.ShoppingCart, onBack = onFinish)
+                PremiumTopBar(
+                    "Pedidos de Compras",
+                    selectedDb,
+                    Icons.Default.ShoppingCart,
+                    onBack = onFinish
+                )
                 ResponsiveDbSelector(
                     selectedDb = selectedDb,
                     onDbSelected = { newDb -> selectedDb = newDb; selectedPedidos.clear() }
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHost) },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHost) { data ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+                ) {
+                    PremiumSnackbar(data)
+                }
+            }
+        },
         bottomBar = {
             Surface(shadowElevation = 16.dp) {
                 Row(Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PremiumButton("Atualizar", Modifier.weight(1f), Navy700, Icons.Default.Refresh) {
+                    PremiumButton(
+                        "Atualizar",
+                        Modifier.weight(1f),
+                        Navy700,
+                        Icons.Default.Refresh
+                    ) {
                         carregando = true
                         selectedPedidos.clear()
                         scope.launch(Dispatchers.IO) {
@@ -85,7 +114,12 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
                             }
                         }
                     }
-                    PremiumButton("Liberar (${selectedPedidos.size})", Modifier.weight(1f), Emerald500, Icons.Default.Check) {
+                    PremiumButton(
+                        "Liberar (${selectedPedidos.size})",
+                        Modifier.weight(1f),
+                        Emerald500,
+                        Icons.Default.Check
+                    ) {
                         if (selectedPedidos.isEmpty()) {
                             scope.launch { snackbarHost.showSnackbar("Nenhum pedido selecionado.") }
                             return@PremiumButton
@@ -95,16 +129,18 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
 
                             // Dispara a vibração na Thread Principal (UI)
                             launch(Dispatchers.Main) {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }
 
                             // Mostra o Snackbar de forma independente
                             launch {
-                                snackbarHost.showSnackbar(if (qtd > 0) "$qtd Pedidos Liberados" else "Erro ao liberar")
+                                snackbarHost.showSnackbar(if (qtd > 0) "Pedidos de Compra | $qtd Pedidos Liberados | Sucesso" else "Pedidos de Compra | Erro ao liberar | Erro")
                             }
 
                             // Atualiza a lista imediatamente
-                            fetchHierarquia(selectedDb) { lista -> fornecedores = lista; carregando = false }
+                            fetchHierarquia(selectedDb) { lista ->
+                                fornecedores = lista; carregando = false
+                            }
                             selectedPedidos.clear()
                         }
                     }

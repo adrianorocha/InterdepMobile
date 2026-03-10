@@ -1,6 +1,11 @@
 package com.interdep.interdepmobile.ui
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,7 +13,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -16,15 +20,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.interdep.interdepmobile.ui.components.*
 import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.ui.PremiumButton
+import com.interdep.interdepmobile.ui.theme.ui.PremiumSnackbar
+import com.interdep.interdepmobile.ui.theme.ui.PremiumTopBar
+import com.interdep.interdepmobile.ui.theme.ui.ResponsiveDbSelector
+import com.interdep.interdepmobile.ui.theme.ui.getUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.sql.DriverManager
@@ -47,6 +55,7 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
     val haptic = LocalHapticFeedback.current
+    val snackbarHost = remember { SnackbarHostState() }
 
     fun buscar() {
         if(codInput.isEmpty()) return
@@ -67,11 +76,27 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
     Scaffold(
         topBar = {
             Column(Modifier.background(Color.White)) {
-                PremiumTopBar("Liberação Fornecedor", "Desbloquear Cadastro", Icons.Default.LocationCity, onBack = onFinish)
+                PremiumTopBar(
+                    "Liberação Fornecedor",
+                    "Desbloquear Cadastro",
+                    Icons.Default.LocationCity,
+                    onBack = onFinish
+                )
                 ResponsiveDbSelector(selectedDb = selectedDb, onDbSelected = {
                     selectedDb = it
                     fantasia = ""
                 })
+            }
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHost) { data ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+                ) {
+                    PremiumSnackbar(data)
+                }
             }
         },
         containerColor = Slate100
@@ -124,18 +149,31 @@ fun LiberacaoFornecedorScreen(onFinish: () -> Unit) {
                             }
                         } else {
                             // Caso esteja bloqueado, mostra o botão de ação
-                            PremiumButton("Liberar Cadastro", Modifier.fillMaxWidth(), Emerald500, Icons.Default.CheckCircle) {
+                            PremiumButton(
+                                "Liberar Cadastro",
+                                Modifier.fillMaxWidth(),
+                                Emerald500,
+                                Icons.Default.CheckCircle
+                            ) {
                                 scope.launch(Dispatchers.IO) {
                                     val qtd = liberateFornecedor(selectedDb, codInput)
                                     launch(Dispatchers.Main) {
                                         // Dispara a vibração
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 
-                                        if(qtd >= 0) {
-                                            Toast.makeText(ctx, "Liberado com sucesso!", Toast.LENGTH_SHORT).show()
+                                        if (qtd >= 0) {
+                                            Toast.makeText(
+                                                ctx,
+                                                "Fornecedor | Liberado com sucesso! | Sucesso",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                             buscar() // Recarrega para mostrar o status de sucesso
                                         } else {
-                                            Toast.makeText(ctx, "Erro ao liberar", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(
+                                                ctx,
+                                                "Fornecedor | Erro ao liberar | Erro",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
                                     }
                                 }

@@ -1,6 +1,11 @@
 package com.interdep.interdepmobile.ui
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,16 +21,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.interdep.interdepmobile.ui.components.PremiumButton
-import com.interdep.interdepmobile.ui.components.PremiumTopBar
-import com.interdep.interdepmobile.ui.components.getUrl
 import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.ui.PremiumButton
+import com.interdep.interdepmobile.ui.theme.ui.PremiumSnackbar
+import com.interdep.interdepmobile.ui.theme.ui.PremiumTopBar
+import com.interdep.interdepmobile.ui.theme.ui.getUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.sql.DriverManager
@@ -49,6 +56,7 @@ fun AtualizarBeneficiamentoScreen(onFinish: () -> Unit) {
     var bancoSelecionado by remember { mutableStateOf(bancosDestino[0]) }
 
     val haptic = LocalHapticFeedback.current
+    val snackbarHost = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = {
@@ -58,6 +66,17 @@ fun AtualizarBeneficiamentoScreen(onFinish: () -> Unit) {
                 icon = Icons.Default.Build,
                 onBack = onFinish
             )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHost) { data ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+                ) {
+                    PremiumSnackbar(data)
+                }
+            }
         },
         containerColor = Slate100
     ) { padding ->
@@ -204,25 +223,33 @@ fun AtualizarBeneficiamentoScreen(onFinish: () -> Unit) {
                 val valorFormatado = valorInput.replace(",", ".")
 
                 if (valorFormatado.isBlank() || valorFormatado.toDoubleOrNull() == null) {
-                    Toast.makeText(context, "Informe um valor numérico válido", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Informe um valor numérico válido", Toast.LENGTH_SHORT)
+                        .show()
                     return@PremiumButton
                 }
 
                 carregando = true
                 scope.launch(Dispatchers.IO) {
-                    val sucesso = executarUpdateBeneficiamento(valorFormatado, tipoSelecionado, bancoSelecionado)
+                    val sucesso = executarUpdateBeneficiamento(
+                        valorFormatado,
+                        tipoSelecionado,
+                        bancoSelecionado
+                    )
 
                     launch(Dispatchers.Main) {
-                        // Dispara a vibração
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         carregando = false
-
                         if (sucesso) {
-                            Toast.makeText(context, "Valores atualizados com sucesso!", Toast.LENGTH_LONG).show()
                             valorInput = "" // Limpa o campo após sucesso
-                        } else {
-                            Toast.makeText(context, "Erro ao atualizar o banco de dados", Toast.LENGTH_LONG).show()
                         }
+                    }
+
+                    // Dispara o PremiumSnackbar
+                    launch {
+                        snackbarHost.showSnackbar(
+                            message = if (sucesso) "Atualização Preço | Valores atualizados com sucesso! | Sucesso" else "Atualização Preço | Erro ao atualizar o banco de dados | Erro",
+                            duration = SnackbarDuration.Short
+                        )
                     }
                 }
             }

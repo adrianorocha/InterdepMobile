@@ -2,7 +2,11 @@ package com.interdep.interdepmobile.ui
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,8 +24,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.interdep.interdepmobile.ui.components.*
 import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.ui.PremiumButton
+import com.interdep.interdepmobile.ui.theme.ui.PremiumSnackbar
+import com.interdep.interdepmobile.ui.theme.ui.PremiumTopBar
+import com.interdep.interdepmobile.ui.theme.ui.getUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -52,8 +59,25 @@ fun ComissaoRepresentanteScreen(dbName: String = "Brasfit", onDone: () -> Unit) 
     var lista by remember { mutableStateOf(listOf<RepresentanteComissao>()) }
 
     Scaffold(
-        topBar = { PremiumTopBar("Comissões", "Aprovação de Pagamentos", Icons.Default.AttachMoney, onBack = onDone) },
-        snackbarHost = { SnackbarHost(snackbarHost) },
+        topBar = {
+            PremiumTopBar(
+                "Comissões",
+                "Aprovação de Pagamentos",
+                Icons.Default.AttachMoney,
+                onBack = onDone
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHost) { data ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+                ) {
+                    PremiumSnackbar(data)
+                }
+            }
+        },
         containerColor = Slate100
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -74,13 +98,22 @@ fun ComissaoRepresentanteScreen(dbName: String = "Brasfit", onDone: () -> Unit) 
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    PremiumButton("Buscar Comissões", Modifier.fillMaxWidth(), Navy700, Icons.Default.FilterList) {
-                        val mm = selectedMes.substring(0, 2).toInt(); val aa = selectedAno.toInt()
+                    PremiumButton(
+                        "Buscar Comissões",
+                        Modifier.fillMaxWidth(),
+                        Navy700,
+                        Icons.Default.FilterList
+                    ) {
+                        val mm = selectedMes.substring(0, 2).toInt();
+                        val aa = selectedAno.toInt()
                         val ym = YearMonth.of(aa, mm)
-                        val inicial = "01/${"%02d".format(mm)}/${aa}"; val final = "${ym.lengthOfMonth()}/${"%02d".format(mm)}/${aa}"
+                        val inicial = "01/${"%02d".format(mm)}/${aa}";
+                        val final = "${ym.lengthOfMonth()}/${"%02d".format(mm)}/${aa}"
                         carregando = true
                         scope.launch(Dispatchers.IO) {
-                            fetchComissaoRep(dbName, inicial, final) { res -> lista = res; carregando = false }
+                            fetchComissaoRep(dbName, inicial, final) { res ->
+                                lista = res; carregando = false
+                            }
                         }
                     }
                 }
@@ -115,9 +148,12 @@ fun ComissaoCard(item: RepresentanteComissao, mes: String, ano: String, scope: k
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PremiumButton("Aprovar", Modifier.weight(1f), Emerald500, Icons.Default.Check) {
-                    val mm = mes.substring(0,2).toInt(); val aa = ano.toInt(); val ym = YearMonth.of(aa, mm)
+                    val mm = mes.substring(0, 2).toInt();
+                    val aa = ano.toInt();
+                    val ym = YearMonth.of(aa, mm)
                     // Nota: Sua lógica de data original foi mantida (formato YYYY/MM/DD para o banco?)
-                    val inicial = "${aa}/01/${"%02d".format(mm)}"; val final = "${aa}/${ym.lengthOfMonth()}/${"%02d".format(mm)}"
+                    val inicial = "${aa}/01/${"%02d".format(mm)}";
+                    val final = "${aa}/${ym.lengthOfMonth()}/${"%02d".format(mm)}"
 
                     scope.launch(Dispatchers.IO) {
                         if (Comissao(inicial, final, item.codigo, "A")) {
@@ -129,10 +165,19 @@ fun ComissaoCard(item: RepresentanteComissao, mes: String, ano: String, scope: k
                 }
                 PremiumButton("Reprovar", Modifier.weight(1f), Rose500, Icons.Default.Close) {
                     // Mesma lógica de datas para Reprovar
-                    val mm = mes.substring(0,2).toInt(); val aa = ano.toInt(); val ym = YearMonth.of(aa, mm)
-                    val inicial = "${aa}/01/${"%02d".format(mm)}"; val final = "${aa}/${ym.lengthOfMonth()}/${"%02d".format(mm)}"
+                    val mm = mes.substring(0, 2).toInt();
+                    val aa = ano.toInt();
+                    val ym = YearMonth.of(aa, mm)
+                    val inicial = "${aa}/01/${"%02d".format(mm)}";
+                    val final = "${aa}/${ym.lengthOfMonth()}/${"%02d".format(mm)}"
                     scope.launch(Dispatchers.IO) {
-                        if (Comissao(inicial, final, item.codigo, "R")) snack.showSnackbar("Reprovado.")
+                        if (Comissao(
+                                inicial,
+                                final,
+                                item.codigo,
+                                "R"
+                            )
+                        ) snack.showSnackbar("Reprovado.")
                     }
                 }
             }

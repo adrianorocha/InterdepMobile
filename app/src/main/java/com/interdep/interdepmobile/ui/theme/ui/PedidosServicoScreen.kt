@@ -5,7 +5,11 @@ import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,12 +24,17 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.interdep.interdepmobile.ui.components.*
 import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.ui.PremiumButton
+import com.interdep.interdepmobile.ui.theme.ui.PremiumSnackbar
+import com.interdep.interdepmobile.ui.theme.ui.PremiumTopBar
+import com.interdep.interdepmobile.ui.theme.ui.ResponsiveDbSelector
+import com.interdep.interdepmobile.ui.theme.ui.getUrl
 import com.interdep.interdepmobile.util.toDataPremium
 import com.interdep.interdepmobile.util.toPrecoFormatado
 import kotlinx.coroutines.Dispatchers
@@ -63,37 +72,67 @@ fun PedidosServicoScreen(onFinish: () -> Unit) {
     Scaffold(
         topBar = {
             Column(Modifier.background(Color.White)) {
-                PremiumTopBar("Pedidos de Serviço", selectedDb, Icons.Default.Handyman, onBack = onFinish)
-                ResponsiveDbSelector(selectedDb = selectedDb, onDbSelected = { newDb -> selectedDb = newDb; selectedPedidos.clear() })
+                PremiumTopBar(
+                    "Pedidos de Serviço",
+                    selectedDb,
+                    Icons.Default.Handyman,
+                    onBack = onFinish
+                )
+                ResponsiveDbSelector(
+                    selectedDb = selectedDb,
+                    onDbSelected = { newDb -> selectedDb = newDb; selectedPedidos.clear() })
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHost) },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHost) { data ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+                ) {
+                    PremiumSnackbar(data)
+                }
+            }
+        },
         bottomBar = {
             Surface(shadowElevation = 16.dp) {
                 Row(Modifier.fillMaxWidth().padding(16.dp).navigationBarsPadding(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PremiumButton("Atualizar", Modifier.weight(1f), Navy700, Icons.Default.Refresh) {
+                    PremiumButton(
+                        "Atualizar",
+                        Modifier.weight(1f),
+                        Navy700,
+                        Icons.Default.Refresh
+                    ) {
                         carregando = true
                         selectedPedidos.clear()
                         scope.launch(Dispatchers.IO) {
-                            fetchHierarquiaServico(selectedDb) { lista -> fornecedores = lista; carregando = false }
+                            fetchHierarquiaServico(selectedDb) { lista ->
+                                fornecedores = lista; carregando = false
+                            }
                         }
                     }
-                    PremiumButton("Liberar (${selectedPedidos.size})", Modifier.weight(1f), Emerald500, Icons.Default.Check) {
+                    PremiumButton(
+                        "Liberar (${selectedPedidos.size})",
+                        Modifier.weight(1f),
+                        Emerald500,
+                        Icons.Default.Check
+                    ) {
                         if (selectedPedidos.isEmpty()) {
                             scope.launch { snackbarHost.showSnackbar("Nenhum serviço selecionado.") }
                             return@PremiumButton
                         }
                         scope.launch(Dispatchers.IO) {
                             // 1. Executa a liberação no banco
-                            val qtd = liberarSelecionadosServico(selectedDb, selectedPedidos.toList())
+                            val qtd =
+                                liberarSelecionadosServico(selectedDb, selectedPedidos.toList())
 
                             // 2. Dispara o feedback tátil (vibração curta de confirmação)
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 
                             // 3. Mostra o Snackbar em um novo launch para não travar a execução abaixo
                             launch {
                                 snackbarHost.showSnackbar(
-                                    message = if (qtd > 0) "$qtd Serviços Liberados" else "Erro ao liberar",
+                                    message = if (qtd > 0) "Pedido de Serviço | $qtd Serviços Liberados | Sucesso" else "Pedido de Serviço | Erro ao liberar | Erro",
                                     duration = SnackbarDuration.Short // Usa a duração curta que configuramos
                                 )
                             }
@@ -106,7 +145,8 @@ fun PedidosServicoScreen(onFinish: () -> Unit) {
 
                             // 5. Limpa a seleção
                             selectedPedidos.clear()
-                        }                    }
+                        }
+                    }
                 }
             }
         },

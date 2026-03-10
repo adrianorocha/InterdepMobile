@@ -1,7 +1,11 @@
 package com.interdep.interdepmobile.ui
 
 import android.widget.Toast
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,19 +15,20 @@ import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.interdep.interdepmobile.ui.components.PremiumButton
-import com.interdep.interdepmobile.ui.components.PremiumTopBar
-import com.interdep.interdepmobile.ui.components.getUrl
 import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.ui.PremiumButton
+import com.interdep.interdepmobile.ui.theme.ui.PremiumSnackbar
+import com.interdep.interdepmobile.ui.theme.ui.PremiumTopBar
+import com.interdep.interdepmobile.ui.theme.ui.getUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.sql.DriverManager
@@ -42,6 +47,7 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
     var carregando by remember { mutableStateOf(false) }
 
     val haptic = LocalHapticFeedback.current
+    val snackbarHost = remember { SnackbarHostState() }
 
     // Se o banco de origem mudar e estiver nos destinos, remove ele dos destinos
     LaunchedEffect(bancoOrigem) {
@@ -59,6 +65,17 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                 onBack = onFinish
             )
         },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHost) { data ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+                ) {
+                    PremiumSnackbar(data)
+                }
+            }
+        },
         containerColor = Slate100
     ) { padding ->
         Column(
@@ -73,7 +90,13 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                 value = matricula,
                 onValueChange = { matricula = it.filter { char -> char.isDigit() } },
                 label = { Text("Número do Funcionário (Matrícula)") },
-                leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = Navy700) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Badge,
+                        contentDescription = null,
+                        tint = Navy700
+                    )
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -94,7 +117,12 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Banco de Origem", fontWeight = FontWeight.Bold, color = Navy900, fontSize = 14.sp)
+                    Text(
+                        "Banco de Origem",
+                        fontWeight = FontWeight.Bold,
+                        color = Navy900,
+                        fontSize = 14.sp
+                    )
                     Spacer(Modifier.height(8.dp))
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
@@ -127,7 +155,12 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Banco(s) de Destino", fontWeight = FontWeight.Bold, color = Navy900, fontSize = 14.sp)
+                    Text(
+                        "Banco(s) de Destino",
+                        fontWeight = FontWeight.Bold,
+                        color = Navy900,
+                        fontSize = 14.sp
+                    )
                     Text("Selecione um ou mais destinos", color = Slate500, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
 
@@ -145,7 +178,9 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                                 selected = isSelected,
                                 onClick = {
                                     if (!isDisabled) {
-                                        if (isSelected) bancosDestino.remove(db) else bancosDestino.add(db)
+                                        if (isSelected) bancosDestino.remove(db) else bancosDestino.add(
+                                            db
+                                        )
                                     }
                                 },
                                 label = { Text(db) },
@@ -174,11 +209,16 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                 icon = Icons.Default.Send
             ) {
                 if (matricula.isBlank()) {
-                    Toast.makeText(context, "Informe o número do funcionário", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Informe o número do funcionário", Toast.LENGTH_SHORT)
+                        .show()
                     return@PremiumButton
                 }
                 if (bancosDestino.isEmpty()) {
-                    Toast.makeText(context, "Selecione pelo menos um banco de destino", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "Selecione pelo menos um banco de destino",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return@PremiumButton
                 }
 
@@ -191,17 +231,20 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
                     )
 
                     launch(Dispatchers.Main) {
-                        // Dispara a vibração
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         carregando = false
-
                         if (sucesso) {
-                            Toast.makeText(context, "Transferência realizada com sucesso!", Toast.LENGTH_LONG).show()
                             matricula = ""
                             bancosDestino.clear()
-                        } else {
-                            Toast.makeText(context, "Erro ao transferir. Verifique sua conexão.", Toast.LENGTH_LONG).show()
                         }
+                    }
+
+                    // Dispara o PremiumSnackbar
+                    launch {
+                        snackbarHost.showSnackbar(
+                            message = if (sucesso) "Transferência de Funcionário | Transferência realizada com sucesso! | Sucesso" else "Transferência de Funcionário | Erro ao transferir. Verifique sua conexão. | Erro",
+                            duration = SnackbarDuration.Short
+                        )
                     }
                 }
             }
@@ -210,7 +253,11 @@ fun TransferenciaFuncionarioScreen(onFinish: () -> Unit) {
 }
 
 // --- Lógica JDBC ---
-private fun executarProcedureTransferencia(origem: String, destinos: List<String>, matricula: Int): Boolean {
+private fun executarProcedureTransferencia(
+    origem: String,
+    destinos: List<String>,
+    matricula: Int
+): Boolean {
     return try {
         Class.forName("net.sourceforge.jtds.jdbc.Driver")
 

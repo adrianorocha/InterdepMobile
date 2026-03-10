@@ -1,5 +1,10 @@
 package com.interdep.interdepmobile.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -9,10 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
-import com.interdep.interdepmobile.ui.components.*
 import com.interdep.interdepmobile.ui.theme.*
+import com.interdep.interdepmobile.ui.theme.ui.PremiumButton
+import com.interdep.interdepmobile.ui.theme.ui.PremiumSnackbar
+import com.interdep.interdepmobile.ui.theme.ui.PremiumTopBar
+import com.interdep.interdepmobile.ui.theme.ui.getUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.sql.DriverManager
@@ -21,7 +30,7 @@ import java.sql.DriverManager
 @Composable
 fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
-    val snackHost = remember { SnackbarHostState() }
+    val snackbarHost = remember { SnackbarHostState() }
 
     val sellers = listOf("Renan" to 59, "Gabriel" to 61, "Rose" to 148, "Matheus" to 794, "Cruz" to 530, "Adriano Almeida" to 9045)
     var expandedSeller by remember { mutableStateOf(false) }
@@ -32,8 +41,25 @@ fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
     val codV = sellers.find { it.first == selectedSellerName }?.second
 
     Scaffold(
-        topBar = { PremiumTopBar("Vínculo Vendedor", "Associar Cliente", Icons.Default.PersonAdd, onBack = onDone) },
-        snackbarHost = { SnackbarHost(snackHost) },
+        topBar = {
+            PremiumTopBar(
+                "Vínculo Vendedor",
+                "Associar Cliente",
+                Icons.Default.PersonAdd,
+                onBack = onDone
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHost) { data ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+                ) {
+                    PremiumSnackbar(data)
+                }
+            }
+        },
         containerColor = Slate100
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -76,21 +102,26 @@ fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
             }
 
             // Botão de Ação Full Width
-            PremiumButton("Salvar Vínculo", Modifier.fillMaxWidth(), Navy700, Icons.Default.Business) {
+            PremiumButton(
+                "Salvar Vínculo",
+                Modifier.fillMaxWidth(),
+                Navy700,
+                Icons.Default.Business
+            ) {
                 if (codV == null || cliente.isBlank()) {
-                    scope.launch { snackHost.showSnackbar("Preencha todos os campos") }
+                    scope.launch { snackbarHost.showSnackbar("Preencha todos os campos") }
                 } else {
                     scope.launch(Dispatchers.IO) {
                         val qtd = upsertVendedorCliente(dbName, codV, cliente)
 
                         // Dispara a vibração na Thread Principal (UI)
                         launch(Dispatchers.Main) {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         }
 
                         // Mostra o aviso flutuante
                         launch {
-                            snackHost.showSnackbar(if (qtd >= 0) "Sucesso! Registros afetados: $qtd" else "Erro ao gravar.")
+                            snackbarHost.showSnackbar(if (qtd >= 0) "Sucesso! Registros afetados: $qtd" else "Erro ao gravar.")
                         }
 
                         // Limpa a tela instantaneamente
