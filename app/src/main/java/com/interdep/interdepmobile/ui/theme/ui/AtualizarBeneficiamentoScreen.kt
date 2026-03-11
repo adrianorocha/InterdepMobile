@@ -74,7 +74,7 @@ fun AtualizarBeneficiamentoScreen(onFinish: () -> Unit) {
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
                 ) {
-                    PremiumSnackbar(data)
+                    PremiumSnackbar(Icons.Default.Build, data)
                 }
             }
         },

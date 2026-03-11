@@ -92,7 +92,7 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
                 ) {
-                    PremiumSnackbar(data)
+                    PremiumSnackbar(Icons.Default.ShoppingCart, data)
                 }
             }
         },
@@ -134,7 +134,7 @@ fun FornecedorPedidosScreen(onFinish: () -> Unit) {
 
                             // Mostra o Snackbar de forma independente
                             launch {
-                                snackbarHost.showSnackbar(if (qtd > 0) "Pedidos de Compra | $qtd Pedidos Liberados | Sucesso" else "Pedidos de Compra | Erro ao liberar | Erro")
+                                snackbarHost.showSnackbar(if (qtd > 0) "Pedidos de Compra | $qtd Pedido(s) Liberado(s) | Sucesso" else "Pedidos de Compra | Erro ao liberar | Erro")
                             }
 
                             // Atualiza a lista imediatamente

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,7 +57,7 @@ fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
                 ) {
-                    PremiumSnackbar(data)
+                    PremiumSnackbar(Icons.Default.Business, data)
                 }
             }
         },
@@ -121,7 +122,7 @@ fun VendedorClienteScreen(dbName: String = "Brasfit", onDone: () -> Unit = {}) {
 
                         // Mostra o aviso flutuante
                         launch {
-                            snackbarHost.showSnackbar(if (qtd >= 0) "Sucesso! Registros afetados: $qtd" else "Erro ao gravar.")
+                            snackbarHost.showSnackbar(if (qtd >= 0) "Sucesso! Registro(s) afetado(s): $qtd" else "Erro ao gravar.")
                         }
 
                         // Limpa a tela instantaneamente

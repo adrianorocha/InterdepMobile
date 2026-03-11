@@ -90,7 +90,7 @@ fun PedidosServicoScreen(onFinish: () -> Unit) {
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
                 ) {
-                    PremiumSnackbar(data)
+                    PremiumSnackbar(Icons.Default.Receipt, data)
                 }
             }
         },
@@ -132,7 +132,7 @@ fun PedidosServicoScreen(onFinish: () -> Unit) {
                             // 3. Mostra o Snackbar em um novo launch para não travar a execução abaixo
                             launch {
                                 snackbarHost.showSnackbar(
-                                    message = if (qtd > 0) "Pedido de Serviço | $qtd Serviços Liberados | Sucesso" else "Pedido de Serviço | Erro ao liberar | Erro",
+                                    message = if (qtd > 0) "Pedido de Serviço | $qtd Serviço(s) Liberado(s) | Sucesso" else "Pedido de Serviço | Erro ao liberar | Erro",
                                     duration = SnackbarDuration.Short // Usa a duração curta que configuramos
                                 )
                             }
