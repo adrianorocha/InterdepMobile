@@ -43,7 +43,8 @@ fun MainMenuScreen(
     onComissaoRepresentante: () -> Unit,
     onLiberaFornecedor: () -> Unit,
     onTransferirFuncionario: () -> Unit,
-    onAtualizarBeneficiamento: () -> Unit
+    onAtualizarBeneficiamento: () -> Unit,
+    onClonarMaterial: () -> Unit
 ) {
     val context = LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
@@ -64,6 +65,7 @@ fun MainMenuScreen(
         MenuItemData("Cadastro", "Fornecedor", Icons.Default.LocationCity, Color(0xFFF59E0B), onLiberaFornecedor),
         MenuItemData("RH", "Transferir", Icons.Default.CompareArrows, Color(0xFF10B981), onTransferirFuncionario),
         MenuItemData("Produção", "Benefic.", Icons.Default.Build, Color(0xFFF43F5E), onAtualizarBeneficiamento),
+        MenuItemData("Material", "Clonar", Icons.Default.ContentCopy, Color(0xFFF48F88), onClonarMaterial),
         MenuItemData("Sistema", "Sair", Icons.Default.ExitToApp, Color(0xFFEF4444)) { showExitDialog = true }
     )
 

@@ -13,4 +13,6 @@ object Routes {
     const val LIBERA_FORNECEDOR = "libera_fornecedor"
     const val TRANSFERIR_FUNCIONARIO = "transferir_funcionario"
     const val ATUALIZAR_BENEFICIAMENTO = "atualizar_beneficiamento"
+    const val CLONAR_MATERIAL = "clonar_material"
+
 }

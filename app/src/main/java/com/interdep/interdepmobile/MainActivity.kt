@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.interdep.interdepmobile.ui.AtualizarBeneficiamentoScreen
+import com.interdep.interdepmobile.ui.ClonarMaterialScreen
 import com.interdep.interdepmobile.ui.ComissaoRepresentanteScreen
 import com.interdep.interdepmobile.ui.MainMenuScreen
 import com.interdep.interdepmobile.ui.PedidosServicoScreen
@@ -78,6 +79,9 @@ fun InterdepApp() {
                 },
                 onAtualizarBeneficiamento = {
                     navController.navigate(Routes.ATUALIZAR_BENEFICIAMENTO)
+                },
+                onClonarMaterial = {
+                    navController.navigate(Routes.CLONAR_MATERIAL)
                 }
             )
         }
@@ -135,6 +139,14 @@ fun InterdepApp() {
         }
         composable(Routes.ATUALIZAR_BENEFICIAMENTO) {
             AtualizarBeneficiamentoScreen(
+                onFinish = {
+                    // Ao voltar, volta para o menu
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Routes.CLONAR_MATERIAL) {
+            ClonarMaterialScreen(
                 onFinish = {
                     // Ao voltar, volta para o menu
                     navController.popBackStack()
